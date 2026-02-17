@@ -57,6 +57,96 @@ function syncControlPanelHeight() {
     scroll.style.paddingBottom = `${Math.ceil(h + 16)}px`;
 }
 
+// ---- Custom modal (replaces browser alert/confirm) ----
+let _confirmOnOk = null;
+let _confirmOnCancel = null;
+function openConfirmModal({ title = '확인', message = '', okText = '확인', cancelText = '취소', showCancel = true, onOk = null, onCancel = null }) {
+    const modal = document.getElementById('confirm-modal');
+    if (!modal) {
+        // Fallback: if modal is missing, do nothing rather than blocking gameplay
+        try { if (showCancel) { if (confirm(message)) onOk?.(); else onCancel?.(); } else { alert(message); onOk?.(); } } catch(_) {}
+        return;
+    }
+    const titleEl = document.getElementById('confirm-title');
+    const msgEl = document.getElementById('confirm-message');
+    const okBtn = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (okBtn) okBtn.textContent = okText;
+    if (cancelBtn) cancelBtn.textContent = cancelText;
+    if (cancelBtn) cancelBtn.classList.toggle('hidden', !showCancel);
+
+    _confirmOnOk = onOk;
+    _confirmOnCancel = onCancel;
+
+    modal.classList.remove('hidden');
+    // focus for keyboard
+    setTimeout(() => okBtn?.focus?.(), 0);
+}
+function closeConfirmModal() {
+    const modal = document.getElementById('confirm-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    _confirmOnOk = null;
+    _confirmOnCancel = null;
+}
+function uiConfirm(message, onYes, onNo, title = '확인') {
+    openConfirmModal({
+        title,
+        message,
+        okText: '확인',
+        cancelText: '취소',
+        showCancel: true,
+        onOk: () => { closeConfirmModal(); onYes?.(); },
+        onCancel: () => { closeConfirmModal(); onNo?.(); },
+    });
+}
+function uiAlert(message, onOk, title = '알림') {
+    openConfirmModal({
+        title,
+        message,
+        okText: '확인',
+        showCancel: false,
+        onOk: () => { closeConfirmModal(); onOk?.(); },
+    });
+}
+
+function bindConfirmModal() {
+    const modal = document.getElementById('confirm-modal');
+    if (!modal) return;
+    const okBtn = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+
+    okBtn?.addEventListener('click', () => {
+        const fn = _confirmOnOk;
+        if (typeof fn === 'function') fn();
+        else closeConfirmModal();
+    });
+    cancelBtn?.addEventListener('click', () => {
+        const fn = _confirmOnCancel;
+        if (typeof fn === 'function') fn();
+        else closeConfirmModal();
+    });
+    // click outside to cancel
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            const fn = _confirmOnCancel;
+            if (typeof fn === 'function') fn();
+            else closeConfirmModal();
+        }
+    });
+    // esc to cancel
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            const fn = _confirmOnCancel;
+            if (typeof fn === 'function') fn();
+            else closeConfirmModal();
+        }
+    });
+}
+
 let _holdStart = 0;
 let _holdRAF = null;
 function initThrowUI() {
@@ -201,7 +291,14 @@ function initNodes() {
     [0, 5, 10, 15, 22].forEach(id => nodes[id].isCorner = true);
 }
 
-window.onload = () => { initNodes(); drawBoard(); drawLines(); showScreen('screen-home'); initThrowUI(); };
+window.onload = () => {
+    initNodes();
+    drawBoard();
+    drawLines();
+    showScreen('screen-home');
+    bindConfirmModal();
+    initThrowUI();
+};
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active');
     if(id==='screen-game'){ applyGameModeUI(); syncControlPanelHeight(); } }
 
@@ -264,7 +361,7 @@ function startGame() {
 }
 
 function selectYutResult(step) {
-    if (step === -1 && setupState.rules.backdoApply === 'off') { alert("빽도 미적용입니다."); return; }
+    if (step === -1 && setupState.rules.backdoApply === 'off') { uiAlert("빽도 미적용입니다."); return; }
     gameState.waitingStep = step; gameState.selectedTokenId = null;
     document.getElementById('input-panel').classList.add('hidden');
     document.getElementById('cancel-move-btn').classList.remove('hidden');
@@ -324,8 +421,8 @@ function showGhostsForToken(token) {
 
     if (dests.length === 0) {
         if (gameState.waitingStep === -1 && token.pos === -1 && setupState.rules.startBackdo === 'penalty') {
-            if(confirm("출발 전 빽도입니다. 턴을 넘기시겠습니까?")) passTurn(); else cancelYutSelection();
-        } else alert("이동할 수 없습니다.");
+            uiConfirm("출발 전 빽도입니다. 턴을 넘기시겠습니까?", () => passTurn(), () => cancelYutSelection(), "빽도");
+        } else uiAlert("이동할 수 없습니다.");
         return;
     }
 
@@ -455,7 +552,7 @@ function executeMove(token, dest) {
             const enemies = gameState.tokens[tm.id].filter(t => t.pos === dest.pos);
             if (enemies.length > 0) {
                 enemies.forEach(e => { e.pos = -1; e.history = []; e.started = false; });
-                caught = true; alert(`[${tm.name}] 말을 잡았습니다!`);
+                caught = true; uiAlert(`[${tm.name}] 말을 잡았습니다!`);
             }
         });
     }
@@ -488,7 +585,7 @@ function executeMove(token, dest) {
 }
 
 function handleNak() {
-    if(confirm("낙(Out)이 나왔어요! 이번 턴은 넘어갑니다.\n턴을 넘길까요?")) passTurn();
+    uiConfirm("낙(Out)이 나왔어요!\n이번 턴은 넘어갑니다.\n턴을 넘길까요?", () => passTurn(), null, "낙");
 }
 function passTurn() {
     // 추가 던지기(보너스 턴)가 남아있다면 팀을 넘기지 않고 소모합니다.
@@ -502,8 +599,12 @@ function passTurn() {
     cancelYutSelection();
     updateUI();
 }
-function resetGame() { if(confirm("초기화?")) location.reload(); }
-function confirmExit() { if(confirm("나가기?")) showScreen('screen-home'); }
+function resetGame() {
+    uiConfirm("초기화할까요?", () => location.reload(), null, "초기화");
+}
+function confirmExit() {
+    uiConfirm("홈으로 나갈까요?", () => showScreen('screen-home'), null, "나가기");
+}
 function skinHTML(teamOrSkinKey, cls='token-img') {
     const skinKey = typeof teamOrSkinKey === 'string' ? teamOrSkinKey : teamOrSkinKey.skinKey;
     const src = (typeof teamOrSkinKey === 'string') ? (SKINS[skinKey]?.src) : (teamOrSkinKey.skinSrc || SKINS[skinKey]?.src);

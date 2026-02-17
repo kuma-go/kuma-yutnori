@@ -7,6 +7,9 @@ button { border: none; cursor: pointer; border-radius: 10px; font-weight: 700; t
 .scroll-content { flex: 1; overflow-y: auto; padding-bottom: 40px; }
 .game-screen { padding: 0; } .game-scroll-area { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 220px; }
 
+/* Home can overflow on small mobile screens; allow vertical scroll within the home screen */
+#screen-home { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
 /* Common */
 .intro-box { margin-top: 15vh; text-align: center; }
 .logo-area h1 { color: #3e2723; font-size: 3rem; margin: 0; } .logo-sub { color: var(--text-sub); margin-bottom: 10px; font-weight: bold; }
@@ -149,6 +152,12 @@ line { stroke: var(--line-color); stroke-width: 3px; stroke-linecap: round; }
 .modal-content h3 { margin-top: 0; color: var(--accent); border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
 .modal-content ul { list-style: none; padding: 0; margin: 20px 0; text-align: left; }
 .modal-content li { margin-bottom: 10px; border-bottom: 1px solid #f9f9f9; padding-bottom: 5px; }
+
+/* Confirm/alert modal extras */
+.modal-desc { margin: 14px 0 18px; color: var(--text-main); line-height: 1.45; font-size: 0.95rem; white-space: pre-line; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn-secondary,
+.modal-actions .btn-primary { width: 100%; }
 .game-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
 /* 상단: 룰 요약 버튼에 텍스트 라벨 표시 */
