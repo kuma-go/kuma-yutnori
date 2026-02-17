@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KUMA 윷놀이 보드</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="screen-home" class="screen active">
+        <div class="intro-box">
+            <div class="logo-area">
+                <div class="logo-pattern"></div>
+                <p class="logo-sub">우리네 민속놀이</p>
+                <h1>KUMA<br>윷놀이판</h1>
+            </div>
+            <img class="main-img" src="resource/main_img.png" alt="KUMA 윷놀이 메인 이미지">
+            <div class="home-menu">
+                <button class="btn-primary" onclick="startManualMode()">놀이 시작</button>
+                <button class="btn-primary" onclick="startThrowMode()">게임 모드</button>
+                <button class="btn-secondary" onclick="showScreen('screen-rules')">도움말</button>
+            </div>
+        </div>
+        <footer class="footer">제작: carksk@naver.com 카톡:carksk2 | V31 Final Fix</footer>
+    </div>
+
+    <div id="screen-rules-setup" class="screen">
+        <div class="header">
+            <button class="btn-back" onclick="showScreen('screen-home')">←</button>
+            <h2>규칙 설정</h2>
+        </div>
+        <div class="scroll-content setup-container">
+            <div class="rules-group">
+                <h3>🔄 이동 및 빽도</h3>
+                <div class="rule-item">
+                    <label>1. 빽도 적용 여부</label>
+                    <div class="radio-group"><label><input type="radio" name="backdo_apply" value="off"> 미적용</label><label><input type="radio" name="backdo_apply" value="on" checked> 적용</label></div>
+                    <p class="rule-tip">TIP) 빽도(뒤로 1칸)가 결과로 나왔을 때 이동 규칙을 사용할지 결정해요.</p>
+                </div>
+                <div class="rule-item">
+                    <label>2. 출발 전 빽도 가 나왔을 경우</label>
+                    <div class="radio-group"><label><input type="radio" name="start_backdo" value="retry"> 다시 던짐</label><label><input type="radio" name="start_backdo" value="penalty" checked> 패널티(턴 넘김)</label></div>
+                    <p class="rule-tip">TIP) 아직 출발하지 않은 말(대기 중)에게 빽도가 나오면 어떻게 처리할지 정해요.</p>
+                </div>
+                <div class="rule-item">
+                    <label>3. 분기점에서 빽도로 뒤로 갈 때 경로설정</label>
+                    <div class="radio-group"><label><input type="radio" name="backdo_route" value="select"> 후보 선택</label><label><input type="radio" name="backdo_route" value="history" checked> 왔던길로 역주행</label></div>
+                    <p class="rule-tip">TIP) 분기점에서 뒤로 이동할 때, 되돌아갈 길을 “선택”할지 “왔던 길”로 고정할지 결정해요.</p>
+                </div>
+            </div>
+            <div class="rules-group">
+                <h3>🏁 완주 및 보너스</h3>
+                <div class="rule-item">
+                    <label>4. 도착점에서 대기 여부</label>
+                    <div class="radio-group vertical">
+                        <label><input type="radio" name="goal_cond" value="stand"> 도착점 이상이면 일단 대기 후 다음 턴에 완주</label>
+                        <label><input type="radio" name="goal_cond" value="exact"> 도착점에 정확하게 도착해야 완주</label>
+                        <label><input type="radio" name="goal_cond" value="over" checked> 도착점에 도착하면 대기, 초과 입력 시 즉시 완주</label>
+                    </div>
+                    <p class="rule-tip">TIP) “대기”는 도착점에 닿으면 바로 끝내지 않고, 다음 턴에 골인 처리하는 룰이에요.</p>
+                </div>
+                <div class="rule-item">
+                    <label>5. 윷/모 + 잡기 중복 추가 던지기</label>
+                    <div class="radio-group vertical">
+                        <label><input type="radio" name="extra_throw" value="none"> 중복적용 없음 (추가 던지기 1회)</label>
+                        <label><input type="radio" name="extra_throw" value="max2" checked> 최대 2회 적용 (윷/모 + 잡기 1회분)</label>
+                    </div>
+                    <p class="rule-tip">TIP) 같은 턴에 “윷/모”도 나오고 “잡기”도 하면 추가 던지기를 1번만 줄지, 최대 2번까지 줄지 선택해요.</p>
+                </div>
+                <div class="rule-item"><label>6. 이동 순서</label><div class="radio-group"><label><input type="radio" name="move_order" value="pool"> 모아서</label><label><input type="radio" name="move_order" value="immediate" checked> 바로 이동</label></div></div>
+            </div>
+            <div class="rules-group">
+                <h3>🔀 경로 선택</h3>
+                <div class="rule-item"><label>7. 분기점 출발</label><div class="radio-group"><label><input type="radio" name="branch_route" value="select"> 직접 선택</label><label><input type="radio" name="branch_route" value="shortcut" checked> 지름길 우선</label></div></div>
+            </div>
+            <div class="rules-group offline-only">
+                <h3>🤝 오프라인 합의 (판정 기준)</h3>
+                <p class="desc">게임 로직에는 영향을 주지 않습니다.</p>
+                
+                <div class="rule-item">
+                    <label>낙(Out) 기준</label>
+                    <div class="radio-group vertical">
+                        <label><input type="radio" name="nak_rule" disabled> 중심이 벗어나면</label>
+                        <label><input type="radio" name="nak_rule" disabled> 조금이라도 벗어나면</label>
+                        <label><input type="radio" name="nak_rule" checked disabled> 완전히 벗어나야 인정</label>
+                    </div>
+                </div>
+
+                <div class="rule-item">
+                    <label>윷 뒤집힘 기준</label>
+                    <div class="radio-group vertical">
+                        <label><input type="radio" name="flip_rule" disabled> 조금이라도 들림</label>
+                        <label><input type="radio" name="flip_rule" disabled> 90도 이상</label>
+                        <label><input type="radio" name="flip_rule" checked disabled> 배면이 하늘을 봄</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bottom-btn-area"><button class="btn-primary" onclick="goToTeamSetup()">다음: 팀 설정</button></div>
+    </div>
+
+    <div id="screen-setup" class="screen">
+        <div class="header"><button class="btn-back" onclick="showScreen('screen-rules-setup')">←</button><h2>팀 구성</h2></div>
+        <div class="scroll-content setup-container">
+            <div class="config-card">
+                <div class="config-row"><label>팀 수</label><div class="number-control"><button onclick="changeTeamCount(-1)">-</button><input type="number" id="team-count" value="2" readonly><button onclick="changeTeamCount(1)">+</button></div></div>
+                <div class="config-row"><label>말 갯수</label><div class="number-control"><button onclick="changeTokenCount(-1)">-</button><input type="number" id="token-count" value="4" readonly><button onclick="changeTokenCount(1)">+</button></div></div>
+            </div>
+            <div id="team-settings-list"></div><div class="spacer"></div>
+        </div>
+        <div class="bottom-btn-area"><button class="btn-primary start-btn" onclick="startGame()">놀이 시작</button></div>
+    </div>
+
+    <div id="screen-game" class="screen game-screen">
+        <header class="game-header">
+            <button class="btn-icon" onclick="confirmExit()" aria-label="홈">
+                <img src="resource/home.svg" alt="홈" />
+            </button>
+            <div class="turn-indicator"><span class="team-badge" id="current-team-badge"></span><div class="turn-info"><span id="turn-text">준비</span><span id="goal-count">골인: 0</span></div></div>
+            <div class="header-btns">
+                <div class="header-btn-with-label" onclick="toggleRulePopup()" role="button" aria-label="룰 요약">
+                    <button class="btn-icon" type="button" aria-label="룰 요약">
+                        <img src="resource/rule.svg" alt="룰" />
+                    </button>
+                    <span class="header-btn-label">룰 요약</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="rule-popup-modal" class="modal hidden">
+            <div class="modal-content"><h3>규칙 요약</h3><ul id="rule-summary-list"></ul><button class="btn-primary" onclick="toggleRulePopup()">닫기</button></div>
+        </div>
+
+        <div class="game-scroll-area">
+            <div class="board-frame">
+                <div class="board-container">
+                    <svg id="board-lines" width="100%" height="100%"></svg>
+                    <div id="yut-board" class="board">
+                        <div class="taegeuk">
+                            <div class="taegeuk-red"></div>
+                            <div class="taegeuk-blue"></div>
+                        </div>
+                        <div id="goal-zone" class="goal-zone hidden">GOAL</div>
+                    </div>
+                </div>
+            </div>
+            <div class="tray-container" id="waiting-trays"></div>
+            <div class="bottom-spacer"></div>
+        </div>
+
+        <div class="control-panel">
+            <div class="status-bar" id="status-message">윷 결과를 입력하세요</div>
+            <div class="yut-inputs" id="input-panel">
+                <div class="row-top">
+                    <button class="yut-btn" onclick="selectYutResult(1)">도</button><button class="yut-btn" onclick="selectYutResult(2)">개</button><button class="yut-btn" onclick="selectYutResult(3)">걸</button><button class="yut-btn" onclick="selectYutResult(4)">윷</button><button class="yut-btn" onclick="selectYutResult(5)">모</button>
+                </div>
+                <div class="row-bottom">
+                    <button class="yut-btn backdo" id="btn-backdo" onclick="selectYutResult(-1)">빽도</button><button class="yut-btn nak" onclick="handleNak()">낙</button>
+                </div>
+            </div>
+            <div class="throw-panel hidden" id="throw-panel">
+                <div class="throw-instruction">길게 누를수록 힘이 세져요. 떼면 던집니다!</div>
+                <div class="throw-turn" id="throw-turn" aria-live="polite"></div>
+                <div class="throw-area" id="throw-area" role="button" aria-label="윷 던지기">
+                    <div class="yut-sticks" id="yut-sticks">
+                        <span class="stick"></span><span class="stick"></span><span class="stick"></span><span class="stick"></span>
+                    </div>
+                    <div class="throw-result" id="throw-result" aria-live="polite"></div>
+                    <div class="power-meter"><div class="power-fill" id="power-fill"></div></div>
+                </div>
+            </div>
+            <button id="cancel-move-btn" class="btn-cancel hidden" onclick="cancelYutSelection()">취소</button>
+        </div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="result-content">
+            <div id="confetti-container" class="confetti-container" aria-hidden="true"></div>
+            <div class="confetti">🎉</div><h2>승리!</h2>
+            <div id="winner-display" class="winner-display"><span id="winner-icon"></span><h3 id="winner-name"></h3></div>
+            <div class="result-btns"><button class="btn-primary" onclick="initTeamSetup()">다시 하기</button><button class="btn-secondary" onclick="showScreen('screen-home')">홈으로</button></div>
+        </div>
+    </div>
+
+    <div id="screen-rules" class="screen">
+         <div class="header"><button class="btn-back" onclick="showScreen('screen-home')">←</button><h2>도움말</h2></div>
+         <div class="scroll-content">
+            <div class="rule-box">
+                <h3>플레이 가이드</h3>
+                <p>전통 윷놀이 규칙을 따릅니다.</p>
+                <ul>
+                    <li>오프라인에서 윷을 던지고 앱에 입력하세요.</li>
+                    <li>말을 선택하면 이동 가능한 위치가 표시됩니다.</li>
+                    <li>설정에서 상세 규칙을 변경할 수 있습니다.</li>
+                    <li>게임 모드에서는 오프라인 윷 없이 게임을 즐길 수 있습니다.</li>
+                    <li>버그나 제보, 문의사항은 메일 carksk@naver.com이나 카톡ID carksk2로 연락주세요.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
