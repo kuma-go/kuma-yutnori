@@ -33,7 +33,19 @@ function applyGameModeUI() {
         msgEl.innerText = isThrow ? "윷을 던지세요" : "윷 결과를 입력하세요";
     }
 
-    // Ensure scroll area can reach below the bottom control panel
+    
+    // Ensure throw result overlay is visible only in throw mode (desktop browsers may keep display:none)
+    const throwResultEl = document.getElementById('throw-result');
+    if (throwResultEl) {
+        if (isThrow) {
+            throwResultEl.style.display = '';
+        } else {
+            throwResultEl.textContent = '';
+            throwResultEl.classList.remove('show');
+            throwResultEl.style.display = 'none';
+        }
+    }
+// Ensure scroll area can reach below the bottom control panel
     syncControlPanelHeight();
 }
 
@@ -206,6 +218,7 @@ function initThrowUI() {
         const el = document.getElementById('throw-result');
         if (!el) return;
         el.textContent = text;
+        el.style.display = '';
         el.classList.add('show');
     };
 
@@ -738,6 +751,7 @@ function updateUI() {
         if (tr) {
             tr.textContent = '';
             tr.classList.remove('show');
+            tr.style.display = 'none';
         }
         window.__lastThrowTeamId = cur.id;
     }

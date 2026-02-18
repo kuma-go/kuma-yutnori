@@ -263,6 +263,7 @@ line { stroke: var(--line-color); stroke-width: 3px; stroke-linecap: round; }
   align-items:center;
   justify-content:space-between;
   gap:10px;
+  padding-bottom: 10px;
 }
 .mode-toggle{
   flex:0 0 auto;
