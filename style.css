@@ -255,3 +255,27 @@ line { stroke: var(--line-color); stroke-width: 3px; stroke-linecap: round; }
     40% { transform: translateY(-18px) rotate(170deg); }
     100% { transform: translateY(0) rotate(360deg); }
 }
+
+
+/* In-game mode toggle (reuse rules radio-group style) */
+.control-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.mode-toggle{
+  flex:0 0 auto;
+  max-width: 280px;
+}
+.mode-toggle label{
+  font-size: 0.78rem;
+  padding: 8px 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+@media (max-width: 420px){
+  .control-top{ flex-direction: column; align-items: stretch; }
+  .mode-toggle{ width: 100%; max-width: none; }
+  .mode-toggle label{ white-space: normal; }
+}

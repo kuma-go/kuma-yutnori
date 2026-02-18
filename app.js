@@ -37,6 +37,41 @@ function applyGameModeUI() {
     syncControlPanelHeight();
 }
 
+
+function syncModeToggleUI() {
+    const wrap = document.getElementById('mode-toggle');
+    if (!wrap) return;
+    const throwRadio = wrap.querySelector('input[value="throw"]');
+    const manualRadio = wrap.querySelector('input[value="manual"]');
+    if (!throwRadio || !manualRadio) return;
+    if (GAME_MODE === 'throw') throwRadio.checked = true;
+    else manualRadio.checked = true;
+}
+
+function setGameMode(mode) {
+    GAME_MODE = mode;
+    try { localStorage.setItem('game_mode', mode); } catch(e) {}
+    syncModeToggleUI();
+    applyGameModeUI();
+    // when switching teams later, result text is cleared elsewhere; but switching mode should not keep stale throw result in manual mode
+    if (mode !== 'throw') {
+        const r = document.getElementById('throw-result');
+        if (r) { r.textContent = ''; r.style.display = 'none'; }
+    }
+}
+
+function initModeToggle() {
+    const wrap = document.getElementById('mode-toggle');
+    if (!wrap) return;
+    wrap.querySelectorAll('input[name="mode_toggle"]').forEach(r => {
+        r.addEventListener('change', () => {
+            setGameMode(r.value);
+        });
+    });
+    syncModeToggleUI();
+}
+
+
 function hexToRgba(hex, alpha) {
     if (!hex) return `rgba(0,0,0,${alpha})`;
     let h = hex.replace('#','').trim();
@@ -298,9 +333,10 @@ window.onload = () => {
     showScreen('screen-home');
     bindConfirmModal();
     initThrowUI();
+    initModeToggle();
 };
 function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active');
-    if(id==='screen-game'){ applyGameModeUI(); syncControlPanelHeight(); } }
+    if(id==='screen-game'){ syncModeToggleUI(); applyGameModeUI(); syncControlPanelHeight(); } }
 
 window.addEventListener('resize', () => {
     if (document.getElementById('screen-game')?.classList.contains('active')) syncControlPanelHeight();

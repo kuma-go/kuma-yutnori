@@ -162,7 +162,13 @@
         </div>
 
         <div class="control-panel">
-            <div class="status-bar" id="status-message">윷 결과를 입력하세요</div>
+            <div class="control-top">
+                <div class="status-bar" id="status-message">윷 결과를 입력하세요</div>
+                <div class="radio-group mode-toggle" id="mode-toggle" aria-label="입력 모드 전환">
+                    <label><input type="radio" name="mode_toggle" value="throw"> 윷 던지기 모드</label>
+                    <label><input type="radio" name="mode_toggle" value="manual" checked> 결과 입력 모드</label>
+                </div>
+            </div>
             <div class="yut-inputs" id="input-panel">
                 <div class="row-top">
                     <button class="yut-btn" onclick="selectYutResult(1)">도</button><button class="yut-btn" onclick="selectYutResult(2)">개</button><button class="yut-btn" onclick="selectYutResult(3)">걸</button><button class="yut-btn" onclick="selectYutResult(4)">윷</button><button class="yut-btn" onclick="selectYutResult(5)">모</button>
