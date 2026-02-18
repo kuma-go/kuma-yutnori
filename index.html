@@ -17,12 +17,12 @@
             </div>
             <img class="main-img" src="resource/main_img.png" alt="KUMA 윷놀이 메인 이미지">
             <div class="home-menu">
-                <button class="btn-primary" onclick="startManualMode()">놀이 시작</button>
-                <button class="btn-primary" onclick="startThrowMode()">게임 모드</button>
+                <button class="btn-primary" onclick="startManualMode()">놀이 시작 (결과값 입력)</button>
+                <button class="btn-primary" onclick="startThrowMode()">게임 모드 (윷 던지기)</button>
                 <button class="btn-secondary" onclick="showScreen('screen-rules')">도움말</button>
             </div>
         </div>
-        <footer class="footer">제작: carksk@naver.com 카톡:carksk2 | V31 Final Fix</footer>
+        <footer class="footer">제작: carksk@naver.com 카톡:carksk2 | V42 UpDate Fix</footer>
     </div>
 
     <div id="screen-rules-setup" class="screen">
@@ -161,12 +161,16 @@
             <div class="bottom-spacer"></div>
         </div>
 
-        <div class="control-panel">
+        <div class="control-panel" id="control-panel">
+            <div class="panel-handle" id="panel-handle" aria-label="하단 패널 접기/펼치기" role="button" tabindex="0"></div>
+            <div class="control-content" id="control-content">
             <div class="control-top">
-                <div class="status-bar" id="status-message">윷 결과를 입력하세요</div>
-                <div class="radio-group mode-toggle" id="mode-toggle" aria-label="입력 모드 전환">
-                    <label><input type="radio" name="mode_toggle" value="throw"> 윷 던지기 모드</label>
-                    <label><input type="radio" name="mode_toggle" value="manual" checked> 결과 입력 모드</label>
+                <div class="mode-row">
+                    <div class="top-message" id="top-message" aria-live="polite">윷 결과를 입력하세요</div>
+                    <div class="radio-group mode-toggle" id="mode-toggle" aria-label="입력 모드 전환">
+                                        <label><input type="radio" name="mode_toggle" value="throw"> 윷 던지기 모드</label>
+                                        <label><input type="radio" name="mode_toggle" value="manual" checked> 결과 입력 모드</label>
+                                    </div>
                 </div>
             </div>
             <div class="yut-inputs" id="input-panel">
@@ -189,6 +193,7 @@
                 </div>
             </div>
             <button id="cancel-move-btn" class="btn-cancel hidden" onclick="cancelYutSelection()">취소</button>
+            </div>
         </div>
     </div>
 
