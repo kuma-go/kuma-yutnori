@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KUMA 윷놀이 보드</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KUMA 윷놀이">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#F7F5F0">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="screen-home" class="screen active">
+        <button id="btn-install" class="btn-outline-install hidden">홈 화면에 추가</button>
+        
         <div class="intro-box">
             <div class="logo-area">
                 <div class="logo-pattern"></div>
@@ -22,7 +34,7 @@
                 <button class="btn-secondary" onclick="showScreen('screen-rules')">도움말</button>
             </div>
         </div>
-        <footer class="footer">제작: carksk@naver.com 카톡:carksk2 | V45 Bug Fix</footer>
+        <footer class="footer">제작: carksk@naver.com 카톡:carksk2 | V46 UpDate Fix</footer>
     </div>
 
     <div id="screen-rules-setup" class="screen">
@@ -81,18 +93,18 @@
                 <div class="rule-item">
                     <label>낙(Out) 기준</label>
                     <div class="radio-group vertical">
-                        <label><input type="radio" name="nak_rule" disabled> 중심이 벗어나면</label>
-                        <label><input type="radio" name="nak_rule" disabled> 조금이라도 벗어나면</label>
-                        <label><input type="radio" name="nak_rule" checked disabled> 완전히 벗어나야 인정</label>
+                        <label><input type="radio" name="nak_rule"> 중심이 벗어나면</label>
+                        <label><input type="radio" name="nak_rule"> 조금이라도 벗어나면</label>
+                        <label><input type="radio" name="nak_rule" checked> 완전히 벗어나야 인정</label>
                     </div>
                 </div>
 
                 <div class="rule-item">
                     <label>윷 뒤집힘 기준</label>
                     <div class="radio-group vertical">
-                        <label><input type="radio" name="flip_rule" disabled> 조금이라도 들림</label>
-                        <label><input type="radio" name="flip_rule" disabled> 90도 이상</label>
-                        <label><input type="radio" name="flip_rule" checked disabled> 배면이 하늘을 봄</label>
+                        <label><input type="radio" name="flip_rule"> 조금이라도 들림</label>
+                        <label><input type="radio" name="flip_rule"> 90도 이상</label>
+                        <label><input type="radio" name="flip_rule" checked> 배면이 하늘을 봄</label>
                     </div>
                 </div>
             </div>
@@ -132,7 +144,6 @@
             <div class="modal-content"><h3>규칙 요약</h3><ul id="rule-summary-list"></ul><button class="btn-primary" onclick="toggleRulePopup()">닫기</button></div>
         </div>
 
-        <!-- Custom confirm/alert modal (replaces browser confirm/alert for better compatibility) -->
         <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
             <div class="modal-content">
                 <h3 id="confirm-title">확인</h3>

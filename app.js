@@ -601,18 +601,23 @@ window.onload = () => {
     initModeToggle();
     initBottomPanelDrag();
     
-    // 강력해진 팀별 컬러 바운스 & 맥박 이펙트
+    // 모바일 GPU 가속 기반 렌더링 최적화 & 팀 컬러 적용 바운스 이펙트
     const dynamicStyle = document.createElement('style');
     dynamicStyle.innerHTML = `
-        /* 1) 선택 유도 - 부드럽고 넓게 퍼지는 팀 컬러 링 */
+        /* 1) 선택 유도 - 부드럽고 넓게 퍼지는 링 (깜빡임 해결) */
         body .token.selectable::after, body .tray-token.selectable::after {
-            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            content: ''; position: absolute; top: 50%; left: 50%; 
             width: 100%; height: 100%; border-radius: 50%;
-            animation: pulse-team 1.5s infinite ease-out; pointer-events: none; z-index: -1;
+            border: 4px solid var(--team-color);
+            box-sizing: border-box;
+            transform: translate(-50%, -50%) scale(1);
+            animation: pulse-team 1.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+            pointer-events: none; z-index: -1;
         }
         @keyframes pulse-team {
-            0% { opacity: 0.8; width: 100%; height: 100%; box-shadow: 0 0 0 4px var(--team-color); }
-            100% { opacity: 0; width: 180%; height: 180%; box-shadow: 0 0 0 16px var(--team-color); }
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.8; }
+            70% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
         }
 
         /* 2) 선택 유도 - 통통 튀는 바운스 애니메이션 */
@@ -1271,3 +1276,48 @@ function updateThrowTurnVisibility(){
     } catch(e) {}
     updateModeToggleEnabled();
 }
+
+// --- [PWA 앱 설치 (홈 화면에 추가) 로직] ---
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    // 브라우저의 기본 미니 인포바 숨김
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.getElementById('btn-install');
+    if (btn) btn.classList.remove('hidden');
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    const installBtn = document.getElementById('btn-install');
+    if (!installBtn) return;
+
+    // iOS 기기 판별 함수
+    const isIos = () => {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        return /iphone|ipad|ipod/.test(userAgent);
+    };
+    // 이미 홈 화면을 통해 접속했는지 판별
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    // iOS이고, 아직 앱으로 설치된 상태가 아니라면 강제로 버튼 노출
+    if (isIos() && !isInStandaloneMode()) {
+        installBtn.classList.remove('hidden');
+    }
+
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // 안드로이드 / PC의 경우 네이티브 설치 프롬프트 호출
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installBtn.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        } else if (isIos()) {
+            // iOS 사파리의 경우 수동 가이드 제공
+            uiAlert("iOS 기기에서는 화면 하단의 [공유] 아이콘을 누른 후, [홈 화면에 추가]를 선택하여 앱처럼 설치해주세요.", null, "설치 안내");
+        } else {
+            uiAlert("이미 설치되어 있거나 현재 브라우저에서 설치 기능을 지원하지 않습니다.");
+        }
+    });
+});

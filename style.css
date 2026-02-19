@@ -227,3 +227,25 @@ line { stroke: var(--line-color); stroke-width: 3px; stroke-linecap: round; }
 #mode-toggle.disabled input { pointer-events: none; }
 
 .mode-row { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; padding: 6px 0 12px; }
+
+/* 홈 화면 추가(앱 설치) 버튼 스타일 */
+.btn-outline-install {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: transparent;
+    border: 2px solid var(--text-sub);
+    color: var(--text-sub);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.2s ease;
+}
+.btn-outline-install:active {
+    background: var(--text-sub);
+    color: var(--bg-color);
+    transform: scale(0.95);
+}
