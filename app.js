@@ -1,10 +1,4 @@
 // Unified top message (left side of the mode row). Always single-line, same alignment.
-// - Manual mode:
-//   - pick=null  => "윷 결과를 입력하세요"
-//   - pick=step  => "윷 4칸 이동하세요."
-// - Throw mode:
-//   - pick=null  => "윷을 던지세요"
-//   - pick=step  => "윷 4칸 이동하세요."
 function setCompactResult(pick){
     const el = document.getElementById('top-message');
     if(!el) return;
@@ -33,16 +27,12 @@ function setCompactResult(pick){
     el.textContent = messageForStep(pick);
 }
 
-// If the GOAL button is clipped on the right (common on mobile), move it below the destination corner.
 function updateGoalZonePlacement() {
     const g = document.getElementById('goal-zone');
     if (!g) return;
-    // Only care when visible.
     if (g.classList.contains('hidden')) return;
 
     g.classList.remove('goal-below');
-
-    // Force a layout read after class change.
     const rect = g.getBoundingClientRect();
     const vw = (window.visualViewport && window.visualViewport.width) ? window.visualViewport.width : window.innerWidth;
     const margin = 4;
@@ -51,7 +41,6 @@ function updateGoalZonePlacement() {
     }
 }
 
-// 스킨 리소스는 resource/ 폴더 내 SVG를 사용
 const SKINS = {
     bear:  { src: 'resource/bear.svg',  icon: '🐻', name: '곰' },
     tiger: { src: 'resource/tiger.svg', icon: '🐯', name: '호랑이' },
@@ -63,13 +52,9 @@ const SKINS = {
     horse: { src: 'resource/horse.svg', icon: '🐴', name: '말' },
 };
 
-// Game mode: 'manual' (button input) or 'throw' (press & hold to throw)
 let GAME_MODE = localStorage.getItem('game_mode') || 'manual';
-
-// Throw-hold state (used to disable mode switching mid-action)
 let IS_HOLDING_THROW = false;
 
-// Enable/disable the mode toggle depending on current game state
 function updateModeToggleEnabled() {
     const wrap = document.getElementById('mode-toggle');
     if (!wrap) return;
@@ -82,9 +67,7 @@ function updateModeToggleEnabled() {
 function setGameMode(mode) {
     GAME_MODE = mode;
     try { localStorage.setItem('game_mode', mode); } catch(e) {}
-    // Keep toggle UI in sync
     try { syncModeToggleUI(); } catch(e) {}
-    // Apply panel visibility only when game screen is active
     try {
         const sg = document.getElementById('screen-game');
         if (sg && sg.classList.contains('active')) applyGameModeUI();
@@ -104,20 +87,17 @@ function applyGameModeUI() {
     inputPanel.classList.toggle('hidden', isThrow);
     throwPanel.classList.toggle('hidden', !isThrow);
 
-    // 패널 높이 스타일 클래스 토글
     if (isThrow) {
         controlPanel.classList.add('mode-throw');
     } else {
         controlPanel.classList.remove('mode-throw');
     }
 
-    // Default prompt (결과가 없을 때만 텍스트 리셋)
     const msgEl = document.getElementById('top-message');
     if (msgEl && gameState && gameState.waitingStep === null) {
         msgEl.textContent = isThrow ? "윷을 던지세요" : "윷 결과를 입력하세요";
     }
     
-    // Ensure throw result overlay is visible only in throw mode
     const throwResultEl = document.getElementById('throw-result');
     if (throwResultEl) {
         if (isThrow) {
@@ -129,17 +109,14 @@ function applyGameModeUI() {
         }
     }
     
-    // UI 초기화: 던지기 모드면 결과 없음(null)으로 셋팅하여 "윷을 던지세요"가 보이게 함
     if (isThrow && (!gameState || gameState.waitingStep === null)) {
          setCompactResult(null); 
     } else if (!isThrow) {
          setCompactResult(null); 
     }
 
-    // Ensure scroll area can reach below the bottom control panel
     syncControlPanelHeight();
 
-    // UI 변경 후 높이 계산 (안전장치)
     setTimeout(() => {
         if (typeof window.__snapBottomPanel === 'function') {
             window.__snapBottomPanel('expanded');
@@ -148,7 +125,6 @@ function applyGameModeUI() {
         }
     }, 50);
 }
-
 
 function syncModeToggleUI() {
     const wrap = document.getElementById('mode-toggle');
@@ -171,7 +147,6 @@ function initModeToggle() {
     syncModeToggleUI();
 }
 
-
 function hexToRgba(hex, alpha) {
     if (!hex) return `rgba(0,0,0,${alpha})`;
     let h = hex.replace('#','').trim();
@@ -187,14 +162,11 @@ function syncControlPanelHeight() {
     const scroll = document.querySelector('.game-scroll-area');
     const panel = document.getElementById('control-panel') || document.querySelector('.control-panel');
     if (!scroll || !panel) return;
-    // 패널이 접혀 있으면(translateY) 실제로 가리는 높이만 반영
     const visible = panel.dataset.visibleHeight ? parseInt(panel.dataset.visibleHeight, 10) : null;
     const h = Number.isFinite(visible) ? visible : panel.getBoundingClientRect().height;
     scroll.style.paddingBottom = `${Math.ceil(h + 16)}px`;
 }
 
-
-// ---- Bottom control panel: swipe/drag to collapse/expand ----
 function initBottomPanelDrag() {
     const panel = document.getElementById('control-panel');
     const handle = document.getElementById('panel-handle');
@@ -202,30 +174,24 @@ function initBottomPanelDrag() {
 
     let isDragging = false;
     let startY = 0;
-    let startOffset = 0; // 드래그 시작 시점의 transform Y 값
-    let maxOffset = 0;   // 최대로 내릴 수 있는 값
+    let startOffset = 0; 
+    let maxOffset = 0;   
     let dragThreshold = 5; 
     let hasMoved = false;
 
-    // Peek(height that must remain visible when collapsed)
-    // Always read from CSS variables so layout changes won't desync JS.
     const getPeek = () => {
         const style = window.getComputedStyle(panel);
         const raw = style.getPropertyValue('--panel-peek').trim();
         const n = parseFloat(raw);
-        // Fallback (should match CSS defaults)
         return Number.isFinite(n) && n > 0 ? n : (panel.classList.contains('mode-throw') ? 112 : 66);
     };
 
-    // Measure the panel's *expanded* height (without the collapsed layout shrinking).
-    // This prevents the "collapse -> content hidden -> height shrinks -> translateY pushes it fully off-screen" bug.
     const measureExpandedHeight = () => {
         const prevTransform = panel.style.transform;
         const prevHeight = panel.style.height;
         const prevVisibility = panel.style.visibility;
         const wasCollapsed = panel.classList.contains('collapsed');
 
-        // Avoid flicker while measuring
         panel.style.visibility = 'hidden';
         panel.classList.remove('panel-anim');
         panel.style.transform = '';
@@ -242,15 +208,11 @@ function initBottomPanelDrag() {
     };
 
     const recompute = () => {
-        // Expanded height must be based on the non-collapsed layout.
         const expandedH = measureExpandedHeight();
         if (!expandedH) return;
-
         const peek = getPeek();
         maxOffset = Math.max(0, Math.round(expandedH - peek));
 
-        // If we are currently collapsed, keep the panel box height pinned so translateY
-        // always leaves the peek visible (prevents disappearing on tall/long screens).
         if (panel.classList.contains('collapsed')) {
             panel.style.height = `${Math.round(expandedH)}px`;
             setOffset(maxOffset, false);
@@ -260,8 +222,6 @@ function initBottomPanelDrag() {
         }
     };
 
-    // Keep the "peek" always visible even when viewport units change (mobile address bar)
-    // or when layout height changes without a traditional window.resize.
     const ensurePeekVisible = (animate = false) => {
         const peek = getPeek();
         const fullH = panel.getBoundingClientRect().height;
@@ -270,28 +230,22 @@ function initBottomPanelDrag() {
         maxOffset = desired;
 
         if (panel.classList.contains('collapsed')) {
-            // If pinned height got cleared by some transition edge case, re-pin now.
             if (!panel.style.height) panel.style.height = `${Math.round(fullH)}px`;
             setOffset(desired, animate);
         } else {
             if (panel.style.height) panel.style.height = '';
             setOffset(0, animate);
         }
-
-        // Also keep the GOAL button within the visual viewport.
         updateGoalZonePlacement();
     };
 
     const setOffset = (y, animate = true) => {
-        // 범위 제한 (0 ~ maxOffset) - [중요] 사라짐 방지
         const safeY = Math.max(0, Math.min(maxOffset, Math.round(y)));
-        
         if (animate) panel.classList.add('panel-anim');
         else panel.classList.remove('panel-anim');
         
         panel.style.transform = `translateY(${safeY}px)`;
         
-        // 스크롤 패딩 동기화
         const fullH = panel.getBoundingClientRect().height || (maxOffset + getPeek());
         const visibleH = Math.max(getPeek(), fullH - safeY);
         panel.dataset.visibleHeight = String(visibleH);
@@ -300,16 +254,14 @@ function initBottomPanelDrag() {
 
     const onPointerDown = (e) => {
         if (e.button !== 0) return;
-        
-        recompute(); // [중요] 드래그 시작 시 높이 재계산
-        
+        recompute(); 
         isDragging = true;
         hasMoved = false;
         startY = e.clientY;
         
         const style = window.getComputedStyle(panel);
         const matrix = new DOMMatrix(style.transform);
-        startOffset = matrix.m42; // 현재 Y값
+        startOffset = matrix.m42;
 
         panel.classList.remove('panel-anim');
         if(handle.setPointerCapture) {
@@ -331,10 +283,7 @@ function initBottomPanelDrag() {
             try { handle.releasePointerCapture(e.pointerId); } catch(e){}
         }
 
-        if (!hasMoved) {
-            toggle();
-            return;
-        }
+        if (!hasMoved) { toggle(); return; }
 
         const style = window.getComputedStyle(panel);
         const matrix = new DOMMatrix(style.transform);
@@ -351,18 +300,15 @@ function initBottomPanelDrag() {
     };
 
     const snapTo = (state) => {
-        // Always recompute based on expanded layout first.
         const expandedH = measureExpandedHeight();
         if (!expandedH) return;
         const peek = getPeek();
         maxOffset = Math.max(0, Math.round(expandedH - peek));
 
         if (state === 'collapsed') {
-            // Pin the panel height BEFORE applying collapsed class (collapsed hides content and would shrink height).
             panel.style.height = `${Math.round(expandedH)}px`;
             panel.classList.add('collapsed');
             setOffset(maxOffset, true);
-            // Re-clamp after animation in case visual viewport changed.
             setTimeout(() => ensurePeekVisible(false), 260);
         } else if (state === 'half') {
             panel.classList.remove('collapsed');
@@ -372,13 +318,11 @@ function initBottomPanelDrag() {
             panel.classList.remove('collapsed');
             setOffset(0, true);
 
-            // After expand animation completes, release pinned height so the panel can auto-size.
             const cleanup = () => {
                 panel.style.height = '';
                 panel.removeEventListener('transitionend', cleanup);
             };
             panel.addEventListener('transitionend', cleanup);
-            // Safety: if transitionend doesn't fire (no animation), release soon.
             setTimeout(() => {
                 if (!panel.classList.contains('collapsed')) panel.style.height = '';
             }, 260);
@@ -401,13 +345,11 @@ function initBottomPanelDrag() {
         if (document.getElementById('screen-game')?.classList.contains('active')) recompute();
     });
 
-    // iOS Safari can change viewport height without window.resize when URL bar shows/hides.
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => ensurePeekVisible(false));
         window.visualViewport.addEventListener('scroll', () => ensurePeekVisible(false));
     }
 
-    // Some browsers update layout on scroll without emitting resize.
     window.addEventListener('scroll', () => {
         if (document.getElementById('screen-game')?.classList.contains('active')) {
             ensurePeekVisible(false);
@@ -423,8 +365,6 @@ function initBottomPanelDrag() {
     }, 100);
 }
 
-
-// ---- Custom modal (replaces browser alert/confirm) ----
 let _confirmOnOk = null;
 let _confirmOnCancel = null;
 function openConfirmModal({ title = '확인', message = '', okText = '확인', cancelText = '취소', showCancel = true, onOk = null, onCancel = null }) {
@@ -523,7 +463,6 @@ function initThrowUI() {
     const updatePower = () => {
         if (!_holdStart) return;
         const dt = performance.now() - _holdStart;
-        // 0..1 in ~1.4s
         const p = clamp(dt / 1400, 0, 1);
         if (powerFill) powerFill.style.width = `${Math.round(p * 100)}%`;
         _holdRAF = requestAnimationFrame(updatePower);
@@ -578,10 +517,6 @@ function initThrowUI() {
             if (r<=0){ pick = labels[i]; break; }
         }
 
-        // 결과 선택 시 컴팩트 결과 업데이트 및 상태바 숨김 처리
-        setCompactResult(pick);
-        
-        // 윷가락 위 텍스트 표시
         const stepLabel = (v) => {
             if (v === 'nak') return '낙';
             if (v === -1) return '빽도';
@@ -603,7 +538,13 @@ function initThrowUI() {
 
         selectYutResult(pick);
         updateThrowTurnVisibility();
-        try { window.__snapBottomPanel && window.__snapBottomPanel('collapsed'); } catch(e) {}
+        
+        if (gameState.waitingStep !== null) {
+            try { window.__snapBottomPanel && window.__snapBottomPanel('collapsed'); } catch(e) {}
+        } else {
+            try { window.__snapBottomPanel && window.__snapBottomPanel('expanded'); } catch(e) {}
+        }
+        
         updateModeToggleEnabled();
     };
 
@@ -626,8 +567,8 @@ function initThrowUI() {
 
 const TEAMS_DEFAULT = [ { id: 'red', color: '#D9463E', label: '홍팀' }, { id: 'blue', color: '#2A6496', label: '청팀' }, { id: 'green', color: '#05c46b', label: '초록팀' }, { id: 'yellow', color: '#ECA328', label: '노랑팀' } ];
 
-let gameState = { teams: [], currentTeamIdx: 0, tokens: {}, waitingStep: null, selectedTokenId: null, bonusThrows: 0 };
-let setupState = { teamCount: 2, tokenCount: 4, selectedSkins: ['bear', 'tiger', 'rabbit', 'dog'], rules: { backdoApply: 'on', startBackdo: 'penalty', backdoRoute: 'history', goalCond: 'over', extraThrow: 'max2', branchRoute: 'shortcut' } };
+let gameState = { teams: [], currentTeamIdx: 0, tokens: {}, waitingStep: null, selectedTokenId: null, pendingThrows: 1, throwPool: [] };
+let setupState = { teamCount: 2, tokenCount: 4, selectedSkins: ['bear', 'tiger', 'rabbit', 'dog'], rules: { backdoApply: 'on', startBackdo: 'penalty', backdoRoute: 'history', goalCond: 'over', extraThrow: 'max2', branchRoute: 'shortcut', moveOrder: 'immediate', nakRuleText: '', flipRuleText: '' } };
 
 const nodes = {};
 function initNodes() {
@@ -659,15 +600,66 @@ window.onload = () => {
     initThrowUI();
     initModeToggle();
     initBottomPanelDrag();
+    
+    // 강력해진 팀별 컬러 바운스 & 맥박 이펙트
+    const dynamicStyle = document.createElement('style');
+    dynamicStyle.innerHTML = `
+        /* 1) 선택 유도 - 부드럽고 넓게 퍼지는 팀 컬러 링 */
+        body .token.selectable::after, body .tray-token.selectable::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 100%; height: 100%; border-radius: 50%;
+            animation: pulse-team 1.5s infinite ease-out; pointer-events: none; z-index: -1;
+        }
+        @keyframes pulse-team {
+            0% { opacity: 0.8; width: 100%; height: 100%; box-shadow: 0 0 0 4px var(--team-color); }
+            100% { opacity: 0; width: 180%; height: 180%; box-shadow: 0 0 0 16px var(--team-color); }
+        }
+
+        /* 2) 선택 유도 - 통통 튀는 바운스 애니메이션 */
+        body .token.selectable {
+            animation: token-bounce 0.8s infinite alternate ease-in-out;
+        }
+        @keyframes token-bounce {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, -65%); box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
+        }
+        body .tray-token.selectable {
+            animation: tray-token-bounce 0.8s infinite alternate ease-in-out;
+        }
+        @keyframes tray-token-bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-15%); box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
+        }
+
+        /* 3) 실제 선택됨 - 흔들림 없이 두껍고 선명하게 고정 */
+        body .token.selected, body .tray-token.selected {
+            animation: none !important;
+            box-shadow: 0 0 20px var(--team-color), inset 0 0 10px var(--team-color) !important;
+            border: 4px solid var(--team-color) !important;
+            z-index: 1000 !important;
+        }
+        body .token.selected {
+            transform: translate(-50%, -50%) scale(1.15) !important;
+        }
+        body .tray-token.selected {
+            transform: scale(1.15) !important;
+        }
+    `;
+    document.head.appendChild(dynamicStyle);
 };
-function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active');
-    if(id==='screen-game'){ syncModeToggleUI(); applyGameModeUI(); syncControlPanelHeight(); } }
+
+function showScreen(id) { 
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+    document.getElementById(id).classList.add('active');
+    if(id==='screen-game'){ syncModeToggleUI(); applyGameModeUI(); syncControlPanelHeight(); } 
+}
 
 window.addEventListener('resize', () => {
     if (document.getElementById('screen-game')?.classList.contains('active')) syncControlPanelHeight();
 });
 
 function initTeamSetup() { showScreen('screen-rules-setup'); }
+
 function goToTeamSetup() {
     const getVal = (n) => { const el = document.querySelector(`input[name="${n}"]:checked`); return el ? el.value : setupState.rules[n]; };
     setupState.rules.backdoApply = getVal('backdo_apply');
@@ -677,12 +669,21 @@ function goToTeamSetup() {
     setupState.rules.extraThrow = getVal('extra_throw');
     if (setupState.rules.extraThrow === 'stack') setupState.rules.extraThrow = 'max2';
     setupState.rules.branchRoute = getVal('branch_route');
+    setupState.rules.moveOrder = getVal('move_order'); 
+
+    const nakEl = document.querySelector('input[name="nak_rule"]:checked');
+    setupState.rules.nakRuleText = nakEl ? nakEl.parentNode.textContent.trim() : '완전히 벗어나야 인정';
+    const flipEl = document.querySelector('input[name="flip_rule"]:checked');
+    setupState.rules.flipRuleText = flipEl ? flipEl.parentNode.textContent.trim() : '배면이 하늘을 봄';
+
     showScreen('screen-setup'); 
     renderSetupUI();
 }
+
 function changeTeamCount(d) { let v = setupState.teamCount + d; if(v<2)v=2;if(v>4)v=4; setupState.teamCount=v; renderSetupUI(); }
 function changeTokenCount(d) { let v = setupState.tokenCount + d; if(v<1)v=1;if(v>8)v=8; setupState.tokenCount=v; renderSetupUI(); }
 function selectSkin(t, s) { for(let i=0;i<setupState.teamCount;i++) if(i!==t && setupState.selectedSkins[i]===s)return; setupState.selectedSkins[t]=s; renderSetupUI(); }
+
 function renderSetupUI() {
     document.getElementById('team-count').value = setupState.teamCount;
     document.getElementById('token-count').value = setupState.tokenCount;
@@ -708,40 +709,126 @@ function startGame() {
         for(let j=0; j<setupState.tokenCount; j++) tokens.push({ id: j, pos: -1, history: [], started: false });
         gameState.tokens[def.id] = tokens;
     }
-    gameState.currentTeamIdx = 0; gameState.waitingStep = null; gameState.selectedTokenId = null; gameState.bonusThrows = 0;
-    updateUI(); showScreen('screen-game'); applyGameModeUI(); updateThrowTurnVisibility(); updateThrowTurnVisibility();
-    // Initialize unified top message
+    gameState.currentTeamIdx = 0; 
+    gameState.waitingStep = null; 
+    gameState.selectedTokenId = null; 
+    gameState.pendingThrows = 1;
+    gameState.throwPool = [];
+    
+    updateUI(); showScreen('screen-game'); applyGameModeUI(); updateThrowTurnVisibility();
     setCompactResult(null);
+}
+
+function checkAnyValidMoveExists() {
+    const curTeam = gameState.teams[gameState.currentTeamIdx];
+    const tokens = gameState.tokens[curTeam.id];
+    
+    const uniqueTokens = [];
+    const posMap = {};
+    tokens.forEach(t => {
+        if (t.pos === 999) return;
+        if (!posMap[t.pos]) {
+            posMap[t.pos] = t;
+            uniqueTokens.push(t);
+        }
+    });
+
+    const uniqueSteps = [...new Set(gameState.throwPool)];
+    for (let token of uniqueTokens) {
+        for (let step of uniqueSteps) {
+            let dests = calculateDestinations(token, step);
+            if (dests.length > 0) return true;
+        }
+    }
+    return false;
 }
 
 function selectYutResult(step) {
     if (step === -1 && setupState.rules.backdoApply === 'off') { uiAlert("빽도 미적용입니다."); return; }
-    gameState.waitingStep = step; gameState.selectedTokenId = null;
+    
+    if (step === -1 && setupState.rules.startBackdo === 'retry') {
+        const curTeam = gameState.teams[gameState.currentTeamIdx];
+        const activeTokens = gameState.tokens[curTeam.id].filter(t => t.pos !== -1 && t.pos !== 999);
+        if (activeTokens.length === 0) {
+            uiAlert("이동할 말이 없어 빽도를 무효 처리하고 다시 던집니다.");
+            if (GAME_MODE === 'throw') {
+                setCompactResult(null);
+                updateThrowTurnVisibility();
+            }
+            return; 
+        }
+    }
+    
+    gameState.throwPool.push(step);
+    gameState.pendingThrows--;
+    
+    if (setupState.rules.moveOrder === 'pool') {
+        if (step >= 4) gameState.pendingThrows++;
+        if (gameState.pendingThrows > 0) {
+            const l = (v) => v===-1?'빽도':v===1?'도':v===2?'개':v===3?'걸':v===4?'윷':'모';
+            document.getElementById('top-message').textContent = `계속 던지세요. (현재 패: ${gameState.throwPool.map(l).join(', ')})`;
+            try { window.__snapBottomPanel && window.__snapBottomPanel('expanded'); } catch(e) {}
+            return; 
+        }
+    } 
+    
+    startMovePhase();
+}
+
+function startMovePhase() {
+    gameState.waitingStep = 'move';
+    gameState.selectedTokenId = null;
+    
+    if (gameState.throwPool.length > 0 && !checkAnyValidMoveExists()) {
+        const curTeam = gameState.teams[gameState.currentTeamIdx];
+        const activeTokens = gameState.tokens[curTeam.id].filter(t => t.pos !== -1 && t.pos !== 999);
+        
+        if (gameState.throwPool.includes(-1) && activeTokens.length === 0 && setupState.rules.startBackdo === 'penalty') {
+            uiAlert("출발 전 빽도가 나와 이동할 말이 없습니다. 턴을 넘깁니다.", () => passTurn());
+        } else {
+            uiAlert("현재 윷패로 이동 가능한 말이 없어 턴을 넘깁니다.", () => passTurn());
+        }
+        return;
+    }
+
     document.getElementById('input-panel').classList.add('hidden');
     document.getElementById('cancel-move-btn').classList.remove('hidden');
     
-    // Unified top message: always single-line, same alignment.
-    setCompactResult(step);
-
+    const l = (v) => v===-1?'빽도':v===1?'도':v===2?'개':v===3?'걸':v===4?'윷':'모';
+    const msg = `이동할 말을 선택하세요. (사용 가능: ${gameState.throwPool.map(l).join(', ')})`;
+    const _m = document.getElementById('top-message');
+    if (_m) _m.textContent = msg;
+    
     updateUI();
     updateModeToggleEnabled();
 }
-function cancelYutSelection() {
-    gameState.waitingStep = null; gameState.selectedTokenId = null;
-    applyGameModeUI();
-    document.getElementById('cancel-move-btn').classList.add('hidden');
-    document.getElementById('goal-zone').classList.add('hidden');
-    
-    // 취소 시 상단 메시지 복구
-    setCompactResult(null);
 
-    clearGhosts(); updateThrowTurnVisibility(); updateUI();
-    updateModeToggleEnabled();
+function cancelYutSelection() {
+    gameState.selectedTokenId = null;
+    clearGhosts();
+    const goalBtn = document.getElementById('goal-zone');
+    if (goalBtn) goalBtn.classList.add('hidden');
+    
+    if (gameState.throwPool && gameState.throwPool.length > 0 && gameState.pendingThrows === 0) {
+        startMovePhase();
+    } else {
+        gameState.waitingStep = null;
+        applyGameModeUI();
+        document.getElementById('cancel-move-btn').classList.add('hidden');
+        setCompactResult(null);
+        updateThrowTurnVisibility(); 
+        updateUI();
+        updateModeToggleEnabled();
+        try { window.__snapBottomPanel && window.__snapBottomPanel('expanded'); } catch(e) {}
+    }
 }
+
 function handleTokenClick(token, teamId) {
-    if (gameState.waitingStep === null) return;
+    if (gameState.waitingStep !== 'move') return;
     if (teamId !== gameState.teams[gameState.currentTeamIdx].id) return;
-    gameState.selectedTokenId = token.id; updateUI(); showGhostsForToken(token);
+    gameState.selectedTokenId = token.id; 
+    updateUI(); 
+    showGhostsForToken(token);
 }
 
 function toggleRulePopup() {
@@ -749,11 +836,15 @@ function toggleRulePopup() {
     if (modal.classList.contains('hidden')) {
         const list = document.getElementById('rule-summary-list');
         const goalText = (setupState.rules.goalCond==='stand') ? '대기 후 다음 턴 완주' : (setupState.rules.goalCond==='exact') ? '정확히 도착' : '도착 시 대기 / 초과 완주';
+        const moveText = (setupState.rules.moveOrder==='pool') ? '모아서 던지기' : '바로 이동';
         list.innerHTML = `
             <li><strong>빽도 적용:</strong> ${setupState.rules.backdoApply==='on'?'적용':'미적용'}</li>
             <li><strong>출발 전 빽도:</strong> ${setupState.rules.startBackdo==='retry'?'다시 던짐':'패널티'}</li>
             <li><strong>도착점:</strong> ${goalText}</li>
+            <li><strong>이동 순서:</strong> ${moveText}</li>
             <li><strong>추가 던지기:</strong> ${setupState.rules.extraThrow==='none'?'1회':'최대 2회'}</li>
+            <li style="margin-top:10px; border-top:1px dashed #ccc; padding-top:10px;"><strong>[합의] 낙 기준:</strong> ${setupState.rules.nakRuleText}</li>
+            <li><strong>[합의] 윷 뒤집힘:</strong> ${setupState.rules.flipRuleText}</li>
         `;
         modal.classList.remove('hidden');
     } else {
@@ -767,28 +858,65 @@ function showGhostsForToken(token) {
     goalBtn.classList.add('hidden');
     const newGoalBtn = goalBtn.cloneNode(true);
     goalBtn.parentNode.replaceChild(newGoalBtn, goalBtn);
-    const dests = calculateDestinations(token, gameState.waitingStep);
-    if (dests.length === 0) {
-        if (gameState.waitingStep === -1 && token.pos === -1 && setupState.rules.startBackdo === 'penalty') {
-            uiConfirm("출발 전 빽도입니다. 턴을 넘기시겠습니까?", () => passTurn(), () => cancelYutSelection(), "빽도");
-        } else uiAlert("이동할 수 없습니다.");
+    
+    let allDests = [];
+    const uniqueSteps = [...new Set(gameState.throwPool)];
+    
+    uniqueSteps.forEach(step => {
+        let dests = calculateDestinations(token, step);
+        dests.forEach(d => {
+            d.usedStep = step; 
+            allDests.push(d);
+        });
+    });
+
+    if (allDests.length === 0) {
+        if (gameState.throwPool.includes(-1) && token.pos === -1 && setupState.rules.startBackdo === 'penalty') {
+            uiConfirm("출발 전 빽도입니다. 턴을 넘기시겠습니까?", () => {
+                const idx = gameState.throwPool.indexOf(-1);
+                if (idx > -1) gameState.throwPool.splice(idx, 1);
+                if (gameState.throwPool.length === 0) passTurn();
+                else startMovePhase();
+            }, () => cancelYutSelection(), "빽도");
+        } else {
+            uiAlert("결과값이 초과되었거나 이동할 수 있는 경로가 없습니다.");
+        }
         return;
     }
+
     const board = document.getElementById('yut-board');
-    dests.forEach(d => {
+    allDests.forEach(d => {
         if (d.pos === 999) {
             const g = document.getElementById('goal-zone');
             g.classList.remove('hidden');
             g.onclick = (e) => { e.stopPropagation(); executeMove(token, d); };
-            // Ensure GOAL button isn't clipped on small screens.
             setTimeout(updateGoalZonePlacement, 0);
         } else {
-            const ghost = document.createElement('div'); ghost.className = 'ghost';
-            ghost.style.left = nodes[d.pos].x + '%'; ghost.style.top = nodes[d.pos].y + '%';
-            ghost.onclick = (e) => { e.stopPropagation(); executeMove(token, d); };
-            board.appendChild(ghost);
+            let existing = Array.from(board.querySelectorAll('.ghost')).find(el => el.dataset.pos == d.pos);
+            if (!existing) {
+                const ghost = document.createElement('div'); 
+                ghost.className = 'ghost';
+                ghost.dataset.pos = d.pos;
+                ghost.style.left = nodes[d.pos].x + '%'; 
+                ghost.style.top = nodes[d.pos].y + '%';
+                ghost.onclick = (e) => { e.stopPropagation(); executeMove(token, d); };
+                board.appendChild(ghost);
+            }
         }
     });
+}
+
+function getPrevNodes(pos) {
+    if (pos === 1) return [0];
+    if (pos === 0) return [19, 28];
+    let res = [];
+    Object.values(nodes).forEach(n => {
+        if (n.next === pos) res.push(n.id);
+        if (n.shortcut === pos) res.push(n.id);
+    });
+    if (pos === 25) res.push(22);
+    if (pos === 27) res.push(22);
+    return [...new Set(res)];
 }
 
 function calculateDestinations(token, steps) {
@@ -798,7 +926,26 @@ function calculateDestinations(token, steps) {
 
     if (steps === -1) {
         if (currentPos === 999 || currentPos === -1) return [];
-        if (currentPos === 1) return [{ pos: 0, hist: [], st: true }];
+        
+        if (setupState.rules.backdoRoute === 'select') {
+            let prevs = getPrevNodes(currentPos);
+            let dests = prevs.map(pr => {
+                let newHist = [...history];
+                newHist.pop();
+                
+                let finalPr = pr;
+                if (pr === 0 && setupState.rules.goalCond === 'exact') finalPr = 999;
+                
+                return { pos: finalPr, hist: newHist, st: (pr !== -1) };
+            });
+            return dests;
+        }
+        
+        if (currentPos === 1) {
+            if (setupState.rules.goalCond === 'exact') return [{ pos: 999, hist: [], st: true }];
+            return [{ pos: 0, hist: [], st: true }];
+        }
+        
         if (history.length > 0) {
             let tempHist = [...history];
             let prev = tempHist.pop();
@@ -815,53 +962,86 @@ function calculateDestinations(token, steps) {
     if (currentPos === -1) {
         cands.push({ pos: 1, rem: steps-1, hist: [1], st: true });
     } else {
-        if (currentPos === 0 && started) return [{ pos: 999, hist: [], st: true }];
-        let nexts = [];
-        if (nodes[currentPos].next !== null) nexts.push(nodes[currentPos].next);
-        if (nodes[currentPos].shortcut) {
-            if (setupState.rules.branchRoute === 'select') nexts.push(nodes[currentPos].shortcut);
-            else nexts = [nodes[currentPos].shortcut];
+        if (currentPos === 0 && started) {
+            cands.push({ pos: 999, rem: steps-1, hist: [], st: true });
+        } else {
+            let nexts = [];
+            if (nodes[currentPos].next !== null) nexts.push(nodes[currentPos].next);
+            if (nodes[currentPos].shortcut) {
+                if (setupState.rules.branchRoute === 'select') nexts.push(nodes[currentPos].shortcut);
+                else nexts = [nodes[currentPos].shortcut];
+            }
+            if (currentPos === 22) {
+                if (setupState.rules.branchRoute === 'select') nexts = [25, 27];
+                else nexts = [27]; 
+            }
+            nexts.forEach(n => cands.push({ pos: n, rem: steps-1, hist: [...history, n], st: true }));
         }
-        if (currentPos === 22) {
-            if (setupState.rules.branchRoute === 'select') nexts = [25, 27];
-            else nexts = [27]; 
-        }
-        nexts.forEach(n => cands.push({ pos: n, rem: steps-1, hist: [...history, n], st: true }));
     }
 
     let results = [];
     cands.forEach(c => {
-        let p = c.pos, r = c.rem, h = c.hist;
-        let previousP = currentPos; 
-        for (let i=0; i<r; i++) {
-            if (p === 999) break;
-            if (nodes[p] === undefined || nodes[p].next === null) {
-                if (p === 19 || p === 28) { } else break; 
-            }
-            let nextP = (nodes[p]) ? nodes[p].next : null;
-            let currentStepStart = p; 
-            if (p === 22) {
-                if (previousP === 21) nextP = 25; 
-                else if (previousP === 24) nextP = 27; 
-                else nextP = 27; 
-            }
-            if ((p === 19 || p === 28)) {
-                nextP = 0; 
-                if (i === r-1) { 
-                    if (setupState.rules.goalCond === 'exact') p = 999;
-                    else p = 0; 
-                } else {
-                    if (setupState.rules.goalCond === 'over') p = 999; 
-                    else p = 999; 
+        let currentP = c.pos;
+        let rem = c.rem;
+        let h = c.hist;
+        let isInvalid = false;
+
+        while (true) {
+            if (currentP === 0) {
+                if (rem === 0) {
+                    if (setupState.rules.goalCond === 'exact') {
+                        currentP = 999; 
+                    }
+                } else { 
+                    if (setupState.rules.goalCond === 'exact') {
+                        isInvalid = true;
+                        break;
+                    } else if (setupState.rules.goalCond === 'stand') {
+                        currentP = 0; 
+                        break;
+                    } else if (setupState.rules.goalCond === 'over') {
+                        currentP = 999;
+                        break;
+                    }
                 }
-            } else if (p === 0) p = 999;
-            else p = nextP;
-            
-            if (p !== 999) h.push(p);
-            previousP = currentStepStart;
+            }
+
+            if (currentP === 999) {
+                if (rem > 0 && setupState.rules.goalCond === 'exact') {
+                    isInvalid = true;
+                }
+                break;
+            }
+
+            if (rem === 0) break;
+
+            let nextP;
+            if (currentP === 19 || currentP === 28) nextP = 0;
+            else if (currentP === 0) nextP = 999; 
+            else nextP = nodes[currentP] ? nodes[currentP].next : null;
+
+            if (currentP === 22) {
+                let prevNode = currentPos;
+                if (h.length > 0) {
+                    let idx = h.indexOf(currentP);
+                    if (idx > 0) prevNode = h[idx - 1];
+                }
+                
+                if (prevNode === 21) nextP = 25;
+                else if (prevNode === 24) nextP = 27;
+                else nextP = 27;
+            }
+
+            currentP = nextP;
+            rem--;
+            if (currentP !== 999) h.push(currentP);
         }
-        results.push({ pos: p, hist: h, st: c.st });
+
+        if (!isInvalid) {
+            results.push({ pos: currentP, hist: h, st: c.st });
+        }
     });
+    
     const uniq = []; const map = new Map();
     results.forEach(r => { if(!map.has(r.pos)){ map.set(r.pos, true); uniq.push(r); } });
     return uniq;
@@ -869,16 +1049,22 @@ function calculateDestinations(token, steps) {
 
 function executeMove(token, dest) {
     const curTeam = gameState.teams[gameState.currentTeamIdx];
-    const steps = gameState.waitingStep;
+    
+    const usedStep = dest.usedStep;
+    const poolIdx = gameState.throwPool.indexOf(usedStep);
+    if (poolIdx > -1) gameState.throwPool.splice(poolIdx, 1);
+
     let movers = [token];
     if (token.pos !== -1) movers = gameState.tokens[curTeam.id].filter(t => t.pos === token.pos);
     movers.forEach(t => { t.pos = dest.pos; t.history = [...dest.hist]; t.started = dest.st; });
+    
     if (dest.pos === 999) {
         curTeam.score += movers.length;
         const _m = document.getElementById('top-message');
         if (_m) { _m.textContent = "골인!"; }
         movers.forEach(t => { t.pos = 999; t.history = []; });
     }
+    
     let caught = false;
     if (dest.pos !== 999 && dest.pos !== -1) {
         gameState.teams.forEach(tm => {
@@ -890,41 +1076,72 @@ function executeMove(token, dest) {
             }
         });
     }
-    cancelYutSelection(); updateUI();
-    if (curTeam.score >= setupState.tokenCount) { setTimeout(() => showWin(curTeam), 500); return; }
+    
     let bonusCount = 0;
-    if (steps >= 4) bonusCount += 1;
+    if (setupState.rules.moveOrder === 'immediate') {
+        if (usedStep >= 4) bonusCount += 1;
+    }
     if (caught) bonusCount += 1;
-    if (setupState.rules.extraThrow === 'none') bonusCount = bonusCount > 0 ? 1 : 0;
-    else bonusCount = Math.min(bonusCount, 2);
+    
+    if (setupState.rules.extraThrow === 'none') bonusCount = Math.min(bonusCount, 1);
+    else if (setupState.rules.moveOrder === 'immediate') bonusCount = Math.min(bonusCount, 2);
+
     if (bonusCount > 0) {
-        gameState.bonusThrows += Math.max(0, bonusCount - 1);
+        gameState.pendingThrows += bonusCount;
+    }
+    
+    cancelYutSelection(); 
+    
+    if (curTeam.score >= setupState.tokenCount) { setTimeout(() => showWin(curTeam), 500); return; }
+    
+    if (gameState.pendingThrows > 0) {
+        gameState.waitingStep = null;
+        applyGameModeUI();
+        document.getElementById('cancel-move-btn').classList.add('hidden');
         const _m2 = document.getElementById('top-message');
-        if (_m2) { _m2.textContent = bonusCount >= 2 ? `한 번 더! (추가 ${bonusCount}회)` : "한 번 더!"; }
-    } else if (dest.pos === 999) setTimeout(passTurn, 1000);
-    else passTurn();
+        if (_m2) _m2.textContent = caught ? "상대 말을 잡아 한 번 더!" : "윷/모 한 번 더!";
+        updateUI();
+        updateThrowTurnVisibility();
+        try { window.__snapBottomPanel && window.__snapBottomPanel('expanded'); } catch(e) {}
+        updateModeToggleEnabled();
+    } else if (gameState.throwPool.length > 0) {
+        startMovePhase();
+    } else if (dest.pos === 999) {
+        setTimeout(passTurn, 1000);
+    } else {
+        passTurn();
+    }
 }
 
-function handleNak() { uiConfirm("낙(Out)이 나왔어요!\n이번 턴은 넘어갑니다.\n턴을 넘길까요?", () => passTurn(), null, "낙"); }
+function handleNak() { 
+    uiConfirm("낙(Out)이 나왔어요!\n이번 턴은 넘어갑니다.\n턴을 넘길까요?", () => passTurn(), null, "낙"); 
+}
+
 function passTurn() {
-    if (gameState.bonusThrows && gameState.bonusThrows > 0) {
-        gameState.bonusThrows -= 1;
-        cancelYutSelection();
-        updateUI();
-        return;
-    }
     gameState.currentTeamIdx = (gameState.currentTeamIdx + 1) % gameState.teams.length;
-    // 턴 넘길 때 컴팩트 결과 초기화
-    setCompactResult(null);
+    gameState.pendingThrows = 1;
+    gameState.throwPool = [];
+    gameState.waitingStep = null;
     
     const tr = document.getElementById('throw-result');
     if (tr) { tr.textContent=''; tr.classList.remove('show'); }
-    cancelYutSelection();
+    
+    gameState.selectedTokenId = null;
+    clearGhosts();
+    const goalBtn = document.getElementById('goal-zone');
+    if (goalBtn) goalBtn.classList.add('hidden');
+    
+    applyGameModeUI();
+    document.getElementById('cancel-move-btn').classList.add('hidden');
+    setCompactResult(null);
+    updateThrowTurnVisibility(); 
     updateUI();
     updateModeToggleEnabled();
 }
+
 function resetGame() { uiConfirm("초기화할까요?", () => location.reload(), null, "초기화"); }
 function confirmExit() { uiConfirm("홈으로 나갈까요?", () => showScreen('screen-home'), null, "나가기"); }
+
 function skinHTML(teamOrSkinKey, cls='token-img') {
     const skinKey = typeof teamOrSkinKey === 'string' ? teamOrSkinKey : teamOrSkinKey.skinKey;
     const src = (typeof teamOrSkinKey === 'string') ? (SKINS[skinKey]?.src) : (teamOrSkinKey.skinSrc || SKINS[skinKey]?.src);
@@ -934,6 +1151,7 @@ function skinHTML(teamOrSkinKey, cls='token-img') {
     }
     return `<img class="${cls}" src="${src}" alt="${SKINS[skinKey]?.name || skinKey}">`;
 }
+
 function showWin(t) {
     document.getElementById('winner-icon').innerHTML = skinHTML(t, 'winner-img');
     document.getElementById('winner-name').innerText = t.name;
@@ -941,6 +1159,7 @@ function showWin(t) {
     launchConfetti();
     showScreen('screen-result');
 }
+
 function launchConfetti() {
     const container = document.getElementById('confetti-container');
     if (!container) return;
@@ -962,7 +1181,9 @@ function launchConfetti() {
     }
     setTimeout(() => { if (container) container.innerHTML = ''; }, 3500);
 }
+
 function clearGhosts() { document.querySelectorAll('.ghost').forEach(e => e.remove()); }
+
 function drawBoard() {
     const b = document.getElementById('yut-board');
     Array.from(b.children).forEach(c => { if(c.classList.contains('node') || c.classList.contains('token') || c.classList.contains('ghost')) b.removeChild(c); });
@@ -971,12 +1192,14 @@ function drawBoard() {
         if(n.isCorner) d.classList.add('corner'); d.style.left=n.x+'%'; d.style.top=n.y+'%'; b.appendChild(d);
     });
 }
+
 function drawLines() {
     const s = document.getElementById('board-lines'); s.innerHTML='';
     const l = (n1,n2) => { const el=document.createElementNS("http://www.w3.org/2000/svg","line"); el.setAttribute("x1",n1.x+"%"); el.setAttribute("y1",n1.y+"%"); el.setAttribute("x2",n2.x+"%"); el.setAttribute("y2",n2.y+"%"); s.appendChild(el); };
     Object.values(nodes).forEach(n=>{ if(n.next && !(n.id===19 && n.next===0)) l(n,nodes[n.next]); if(n.shortcut) l(n,nodes[n.shortcut]); });
     l(nodes[22],nodes[25]); l(nodes[22],nodes[27]); l(nodes[19], nodes[0]); l(nodes[28], nodes[0]); l(nodes[26], nodes[15]);
 }
+
 function updateUI() {
     document.getElementById('btn-backdo').disabled = (setupState.rules.backdoApply === 'off');
     const cur = gameState.teams[gameState.currentTeamIdx];
@@ -994,6 +1217,10 @@ function updateUI() {
         window.__lastThrowTeamId = cur.id;
     }
     const tray = document.getElementById('waiting-trays'); tray.innerHTML = '';
+    
+    // 이펙트 비활성화 용도
+    const isAnySelected = (gameState.selectedTokenId !== null); 
+    
     gameState.teams.forEach(t => {
         const div = document.createElement('div'); div.className = `team-tray ${t.id === cur.id ? 'active' : ''}`;
         div.style.backgroundColor = t.id === cur.id ? t.color + '22' : 'transparent';
@@ -1001,14 +1228,16 @@ function updateUI() {
         gameState.tokens[t.id].filter(k => k.pos === -1).forEach(k => {
             const el = document.createElement('div'); el.className = 'tray-token';
             el.innerHTML = skinHTML(t, 'token-img'); el.style.borderColor = t.color;
-            if(t.id === cur.id && gameState.waitingStep !== null) {
-                el.classList.add('selectable');
+            el.style.setProperty('--team-color', t.color); 
+            if(t.id === cur.id && gameState.waitingStep === 'move') {
+                if(!isAnySelected) el.classList.add('selectable');
                 if(gameState.selectedTokenId === k.id) el.classList.add('selected');
             }
             el.onclick = () => handleTokenClick(k, t.id); div.appendChild(el);
         });
         tray.appendChild(div);
     });
+    
     document.querySelectorAll('#yut-board .token').forEach(e => e.remove());
     gameState.teams.forEach(t => {
         const onBoard = gameState.tokens[t.id].filter(k => k.pos !== -1 && k.pos !== 999);
@@ -1016,10 +1245,11 @@ function updateUI() {
         for(const [pos, arr] of Object.entries(grouped)) {
             const el = document.createElement('div'); el.className = 'token';
             el.dataset.team = t.id; el.style.borderColor = t.color; el.innerHTML = skinHTML(t, 'token-img');
+            el.style.setProperty('--team-color', t.color); 
             if(nodes[pos]) { el.style.left=nodes[pos].x+'%'; el.style.top=nodes[pos].y+'%'; }
             if(arr.length > 1) el.innerHTML += `<small style="border-color:${t.color};background:${t.color}">x${arr.length}</small>`;
-            if(t.id === cur.id && gameState.waitingStep !== null) {
-                el.classList.add('selectable');
+            if(t.id === cur.id && gameState.waitingStep === 'move') {
+                if(!isAnySelected) el.classList.add('selectable');
                 if(gameState.selectedTokenId === arr[0].id) el.classList.add('selected');
             }
             el.onclick = () => handleTokenClick(arr[0], t.id); document.getElementById('yut-board').appendChild(el);
@@ -1027,6 +1257,7 @@ function updateUI() {
     });
     syncControlPanelHeight();
 }
+
 function updateThrowTurnVisibility(){
     const turn = document.getElementById('throw-turn');
     if(!turn) return;
