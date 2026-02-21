@@ -13,18 +13,17 @@ function setCompactResult(pick){
         if (v === 5) return '모';
         return String(v);
     };
-    const steps = (v) => (v === -1 ? 1 : (v === 'nak' ? 0 : Number(v)));
-    const messageForStep = (v) => {
-        if (v === 'nak') return `${label(v)} 이번 턴은 넘어가요.`;
-        if (v === -1) return `${label(v)} 1칸 뒤로 이동하세요.`;
-        return `${label(v)} ${steps(v)}칸 이동하세요.`;
-    };
-
+    const steps = (v) => (v === -1 ? -1 : (v === 'nak' ? 0 : Number(v)));
+    
     if (pick === null || pick === undefined || pick === '') {
         el.textContent = (GAME_MODE === 'throw') ? '윷을 던지세요' : '윷 결과를 입력하세요';
         return;
     }
-    el.textContent = messageForStep(pick);
+
+    // 최소화 상태에서도 직관적으로 보이도록 포맷 변경
+    const stepVal = steps(pick);
+    const moveText = stepVal === -1 ? "1칸 뒤로" : `${stepVal}칸 이동`;
+    el.textContent = `${label(pick)} - ${moveText}`;
 }
 
 function updateGoalZonePlacement() {
@@ -499,15 +498,23 @@ function initThrowUI() {
         }, 580);
 
         const backdoOn = (setupState.rules.backdoApply !== 'off');
-        const w = [];
-        const labels = [];
-        w.push(0.35 - 0.15*p); labels.push(1);
-        w.push(0.28 - 0.10*p); labels.push(2);
-        w.push(0.20);          labels.push(3);
-        w.push(0.12 + 0.20*p); labels.push(4);
-        w.push(0.05 + 0.15*p); labels.push(5);
-        if (backdoOn) { w.push(0.05); labels.push(-1); }
-        w.push(0.035); labels.push('nak');
+        const labels = [1, 2, 3, 4, 5];
+        const w = [12, 35, 35, 13, 2];
+
+        if (backdoOn) {
+            labels.push(-1);
+            w.push(3);
+        }
+
+        let nakWeight = 0;
+        if (p < 0.2) {
+            nakWeight = (0.2 - p) * 125; 
+        } else if (p > 0.8) {
+            nakWeight = (p - 0.8) * 125;
+        }
+        
+        labels.push('nak');
+        w.push(nakWeight);
 
         let sum = w.reduce((a,b)=>a+Math.max(0,b),0);
         let r = Math.random()*sum;
@@ -601,10 +608,8 @@ window.onload = () => {
     initModeToggle();
     initBottomPanelDrag();
     
-    // 모바일 GPU 가속 기반 렌더링 최적화 & 팀 컬러 적용 바운스 이펙트
     const dynamicStyle = document.createElement('style');
     dynamicStyle.innerHTML = `
-        /* 1) 선택 유도 - 부드럽고 넓게 퍼지는 링 (깜빡임 해결) */
         body .token.selectable::after, body .tray-token.selectable::after {
             content: ''; position: absolute; top: 50%; left: 50%; 
             width: 100%; height: 100%; border-radius: 50%;
@@ -619,8 +624,6 @@ window.onload = () => {
             70% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
             100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
         }
-
-        /* 2) 선택 유도 - 통통 튀는 바운스 애니메이션 */
         body .token.selectable {
             animation: token-bounce 0.8s infinite alternate ease-in-out;
         }
@@ -635,8 +638,6 @@ window.onload = () => {
             from { transform: translateY(0); }
             to { transform: translateY(-15%); box-shadow: 0 10px 15px rgba(0,0,0,0.3); }
         }
-
-        /* 3) 실제 선택됨 - 흔들림 없이 두껍고 선명하게 고정 */
         body .token.selected, body .tray-token.selected {
             animation: none !important;
             box-shadow: 0 0 20px var(--team-color), inset 0 0 10px var(--team-color) !important;
@@ -771,7 +772,8 @@ function selectYutResult(step) {
         if (step >= 4) gameState.pendingThrows++;
         if (gameState.pendingThrows > 0) {
             const l = (v) => v===-1?'빽도':v===1?'도':v===2?'개':v===3?'걸':v===4?'윷':'모';
-            document.getElementById('top-message').textContent = `계속 던지세요. (현재 패: ${gameState.throwPool.map(l).join(', ')})`;
+            const poolText = gameState.throwPool.map(l).join(', ');
+            document.getElementById('top-message').textContent = `추가 투구 (현재: ${poolText})`;
             try { window.__snapBottomPanel && window.__snapBottomPanel('expanded'); } catch(e) {}
             return; 
         }
@@ -800,7 +802,14 @@ function startMovePhase() {
     document.getElementById('cancel-move-btn').classList.remove('hidden');
     
     const l = (v) => v===-1?'빽도':v===1?'도':v===2?'개':v===3?'걸':v===4?'윷':'모';
-    const msg = `이동할 말을 선택하세요. (사용 가능: ${gameState.throwPool.map(l).join(', ')})`;
+    const s = (v) => (v === -1 ? -1 : (v === 'nak' ? 0 : Number(v)));
+    
+    // 결과값 포맷 변경: "걸 - 3칸 이동" 형식
+    const results = gameState.throwPool.map(v => l(v)).join(', ');
+    const totalSteps = gameState.throwPool.reduce((sum, v) => sum + s(v), 0);
+    const stepLabel = totalSteps < 0 ? "1칸 뒤로" : `${totalSteps}칸 이동`;
+    
+    const msg = `${results} - ${stepLabel}`;
     const _m = document.getElementById('top-message');
     if (_m) _m.textContent = msg;
     
@@ -1223,7 +1232,6 @@ function updateUI() {
     }
     const tray = document.getElementById('waiting-trays'); tray.innerHTML = '';
     
-    // 이펙트 비활성화 용도
     const isAnySelected = (gameState.selectedTokenId !== null); 
     
     gameState.teams.forEach(t => {
@@ -1277,10 +1285,8 @@ function updateThrowTurnVisibility(){
     updateModeToggleEnabled();
 }
 
-// --- [PWA 앱 설치 (홈 화면에 추가) 로직] ---
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
-    // 브라우저의 기본 미니 인포바 숨김
     e.preventDefault();
     deferredPrompt = e;
     const btn = document.getElementById('btn-install');
@@ -1291,22 +1297,18 @@ window.addEventListener('DOMContentLoaded', () => {
     const installBtn = document.getElementById('btn-install');
     if (!installBtn) return;
 
-    // iOS 기기 판별 함수
     const isIos = () => {
         const userAgent = window.navigator.userAgent.toLowerCase();
         return /iphone|ipad|ipod/.test(userAgent);
     };
-    // 이미 홈 화면을 통해 접속했는지 판별
     const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
 
-    // iOS이고, 아직 앱으로 설치된 상태가 아니라면 강제로 버튼 노출
     if (isIos() && !isInStandaloneMode()) {
         installBtn.classList.remove('hidden');
     }
 
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
-            // 안드로이드 / PC의 경우 네이티브 설치 프롬프트 호출
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
@@ -1314,7 +1316,6 @@ window.addEventListener('DOMContentLoaded', () => {
             }
             deferredPrompt = null;
         } else if (isIos()) {
-            // iOS 사파리의 경우 수동 가이드 제공
             uiAlert("iOS 기기에서는 화면 하단의 [공유] 아이콘을 누른 후, [홈 화면에 추가]를 선택하여 앱처럼 설치해주세요.", null, "설치 안내");
         } else {
             uiAlert("이미 설치되어 있거나 현재 브라우저에서 설치 기능을 지원하지 않습니다.");
